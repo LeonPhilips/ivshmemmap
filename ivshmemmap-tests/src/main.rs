@@ -1,5 +1,7 @@
 extern crate ivshmemmap;
 
+use std::time::Duration;
+
 #[cfg(windows)]
 fn main() {
     println!("Accessing driver...");
@@ -9,10 +11,13 @@ fn main() {
 
     println!("Size: {:?}", device.direct().len());
     println!("Testing manipulation...");
-    let existing_byte = device.direct()[1];
-    let next_byte = existing_byte.wrapping_add(1);
-    device.set_all_bytes(next_byte).unwrap();
-    println!("Changed value: {:?} -> {:?}", existing_byte, next_byte);
+    loop {
+        let existing_byte = device.direct()[1];
+        let next_byte = existing_byte.wrapping_add(1);
+        device.set_all_bytes(next_byte).unwrap();
+        println!("Changed value: {:?} -> {:?}", existing_byte, next_byte);
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 #[cfg(unix)]
@@ -23,8 +28,11 @@ fn main() {
     let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap()).unwrap();
     println!("Size: {:?}", device.direct().len());
     println!("Testing manipulation...");
-    let existing_byte = device.direct()[1];
-    let next_byte = existing_byte.wrapping_add(1);
-    device.set_all_bytes(next_byte).unwrap();
-    println!("Changed value: {:?} -> {:?}", existing_byte, next_byte);
+    loop {
+        let existing_byte = device.direct()[1];
+        let next_byte = existing_byte.wrapping_add(1);
+        device.set_all_bytes(next_byte).unwrap();
+        println!("Changed value: {:?} -> {:?}", existing_byte, next_byte);
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
