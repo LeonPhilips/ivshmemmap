@@ -1,0 +1,4 @@
+/Cargo.lock
+/target/
+/ivshmemmap-tests/Cargo.lock
+/ivshmemmap-tests/target/
