@@ -1,5 +1,4 @@
 use std::fmt::{Debug, Formatter};
-use std::io::Write;
 
 #[derive(Debug)]
 pub struct IvshmemDevice{
