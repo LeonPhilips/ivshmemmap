@@ -16,6 +16,7 @@ use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_FLAGS_AND_ATTRIBUTES, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
 use windows::Win32::System::IO::DeviceIoControl;
+use std::fmt::Formatter;
 
 mod winerror;
 
@@ -250,23 +251,6 @@ impl IvshmemDescriptor {
     }
 }
 
-///
-///
-/// # Arguments
-///
-/// * `picker`: A function that removes the selected device from the vec and returns it. All remaining elements in the vec will be unloaded.
-///             The provided vec is guaranteed to contain at least one Ivshmem device. If no such device exists, this function will return an error.
-///
-/// returns: An initialized and usable IvshmemDevice
-///
-/// # Examples
-///
-/// ```
-/// let mut device = ivshmemmap::windows::pick_ivshmem_device(|mut dev| {
-///     // Do your comparison logic here. In this instance, we simply return the second Ivshmem device found on this computer.
-///     dev.remove(1)
-/// }).unwrap();
-/// ```
 pub fn pick_ivshmem_device<F>(picker: F) -> Result<IvshmemDevice>
 where
     F: FnOnce(Vec<IvshmemDescriptor>) -> IvshmemDescriptor,
@@ -317,7 +301,7 @@ where
     }
 }
 
-pub struct WindowsMemoryMap {
+pub(crate) struct WindowsMemoryMap {
     peer_id: u64,
     size: u64,
     vectors: u64,
@@ -328,7 +312,7 @@ impl Debug for WindowsMemoryMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Memory{{peer: {:?} size: {:?} vectors: {:?}}}",
+            "Memory{{ peer: {:?} size: {:?} vectors: {:?} }}",
             self.peer_id, self.size, self.vectors
         )?;
         Ok(())

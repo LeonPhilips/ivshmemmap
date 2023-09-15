@@ -1,15 +1,18 @@
 extern crate libc;
 
-use crate::device::MappedMemory;
+use crate::device::{IvshmemDevice, MappedMemory};
 use anyhow::bail;
 use std::ffi::CString;
+use std::fmt::{Debug, Formatter};
+use std::path::Path;
+use anyhow::Result;
 
-pub struct UnixMemoryMap<'a> {
+pub(crate) struct UnixMemoryMap<'a> {
     memory: &'a mut [u8],
 }
 
 impl UnixMemoryMap<'_> {
-    pub fn new(path: CString, size: usize) -> anyhow::Result<Self> {
+    pub fn new(path: CString, size: usize) -> Result<Self> {
         unsafe {
             println!("{:?}", path);
             let file_descriptor = libc::open(path.as_ptr(), libc::O_RDWR, 0o000);
@@ -37,13 +40,16 @@ impl UnixMemoryMap<'_> {
             Ok(Self { memory: slice })
         }
     }
+}
 
-    pub unsafe fn read(&self) -> &[u8] {
-        self.memory
-    }
-
-    pub unsafe fn write(&mut self, buffer: &[u8]) {
-        self.memory.copy_from_slice(buffer);
+impl Debug for UnixMemoryMap<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Memory{{ size: {:?} }}",
+            self.memory.len()
+        )?;
+        Ok(())
     }
 }
 
@@ -52,4 +58,10 @@ impl MappedMemory for UnixMemoryMap<'_> {
     fn ptr(&mut self) -> &mut [u8] {
         &mut self.memory
     }
+}
+
+pub fn ivshmem_device<'a>(path: &Path, size: usize) -> Result<IvshmemDevice> {
+    let path = CString::new(path.to_str().expect("Unable to convert path to CString"))?;
+    let memory_map = UnixMemoryMap::new(path, size)?;
+    Ok(IvshmemDevice::with_memory(memory_map))
 }

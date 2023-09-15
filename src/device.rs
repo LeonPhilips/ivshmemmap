@@ -1,19 +1,22 @@
 use std::fmt::Debug;
 
-pub trait MappedMemory {
+#[cfg(windows)]
+type MemoryType = crate::windows::WindowsMemoryMap;
+#[cfg(unix)]
+type MemoryType = crate::linux::UnixMemoryMap<'static>;
+
+// We have a soft requirement on all memory maps implementing the MappedMemory trait to ensure all desired features are implemented for all supported platforms.
+pub(crate) trait MappedMemory: Debug {
     fn ptr(&mut self) -> &mut [u8];
 }
 
 #[derive(Debug)]
-pub struct IvshmemDevice<T>
-where
-    T: MappedMemory,
-{
-    memory: T,
+pub struct IvshmemDevice {
+    memory: MemoryType,
 }
 
-impl<T: MappedMemory> IvshmemDevice<T> {
-    pub fn with_memory(map: T) -> Self {
+impl IvshmemDevice {
+    pub(crate) fn with_memory(map: MemoryType) -> Self {
         Self { memory: map }
     }
 
