@@ -14,21 +14,15 @@ pub(crate) struct UnixMemoryMap<'a> {
 }
 
 impl UnixMemoryMap<'_> {
-    pub fn new(path: CString) -> Result<Self> {
+    pub fn new(path: &Path) -> Result<Self> {
+        let path = CString::new(path.to_str().expect("Unable to convert path to CString"))?;
         unsafe {
-            println!("{:?}", path);
             let file_descriptor = libc::open(path.as_ptr(), libc::O_RDWR, 0o000);
             if file_descriptor == -1 {
                 bail!("Failed to open shared memory.");
             }
-            let c_file: *mut FILE = std::mem::transmute(file_descriptor as u64);
-
-            if libc::fseek(c_file, 0, libc::SEEK_END) != 0 {
-                bail!("Failed to seek to end of the shared memory file.");
-            }
-            let size = libc::ftell(c_file) as usize;
-            libc::rewind(c_file);
-
+            let size = libc::lseek(file_descriptor, 0, libc::SEEK_END) as usize;
+            libc::lseek(file_descriptor, 0, libc::SEEK_SET);
             let ptr = libc::mmap(
                 std::ptr::null_mut(),
                 size,
@@ -37,15 +31,10 @@ impl UnixMemoryMap<'_> {
                 file_descriptor,
                 0,
             );
-
             if ptr == libc::MAP_FAILED {
                 bail!("Failed to map shared memory");
             }
-
             let slice: &mut [u8] = std::slice::from_raw_parts_mut(ptr as *mut u8, size);
-
-            println!("file_descriptor: {}", file_descriptor);
-
             Ok(Self { memory: slice })
         }
     }
@@ -70,7 +59,6 @@ impl MappedMemory for UnixMemoryMap<'_> {
 }
 
 pub fn ivshmem_device<'a>(path: &Path) -> Result<IvshmemDevice> {
-    let path = CString::new(path.to_str().expect("Unable to convert path to CString"))?;
     let memory_map = UnixMemoryMap::new(path)?;
     Ok(IvshmemDevice::with_memory(memory_map))
 }
