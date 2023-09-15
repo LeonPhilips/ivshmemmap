@@ -1,0 +1,11 @@
+[package]
+name = "ivshmemmap"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+windows = {version = "0.48.0", optional = true, features = ["Devices", "Foundation", "Win32_System_Diagnostics_Etw" ,"Win32_Foundation", "Win32_System_SystemServices", "Win32_Devices_DeviceAndDriverInstallation", "Devices_Enumeration", "Win32_System_Registry", "Win32_Devices_DeviceAccess" ,"Win32_System_IO", "Win32_Storage_FileSystem", "Win32_Security"]}
+
