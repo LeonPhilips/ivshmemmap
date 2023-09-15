@@ -47,6 +47,6 @@ where
 ///
 /// ```
 #[cfg(unix)]
-pub fn linux_ivshmem_device(path: &std::path::Path, size: usize) -> Result<IvshmemDevice> {
-    linux::ivshmem_device(path, size)
+pub fn linux_ivshmem_device(path: &std::path::Path) -> Result<IvshmemDevice> {
+    linux::ivshmem_device(path)
 }

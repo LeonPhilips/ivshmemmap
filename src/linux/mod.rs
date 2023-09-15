@@ -4,21 +4,30 @@ use crate::device::{IvshmemDevice, MappedMemory};
 use anyhow::bail;
 use std::ffi::CString;
 use std::fmt::{Debug, Formatter};
+use std::fs::{File, OpenOptions};
 use std::path::Path;
 use anyhow::Result;
+use libc::FILE;
 
 pub(crate) struct UnixMemoryMap<'a> {
     memory: &'a mut [u8],
 }
 
 impl UnixMemoryMap<'_> {
-    pub fn new(path: CString, size: usize) -> Result<Self> {
+    pub fn new(path: CString) -> Result<Self> {
         unsafe {
             println!("{:?}", path);
             let file_descriptor = libc::open(path.as_ptr(), libc::O_RDWR, 0o000);
             if file_descriptor == -1 {
                 bail!("Failed to open shared memory.");
             }
+            let c_file: *mut FILE = std::mem::transmute(file_descriptor as u64);
+
+            if libc::fseek(c_file, 0, libc::SEEK_END) != 0 {
+                bail!("Failed to seek to end of the shared memory file.");
+            }
+            let size = libc::ftell(c_file) as usize;
+            libc::rewind(c_file);
 
             let ptr = libc::mmap(
                 std::ptr::null_mut(),
@@ -60,8 +69,8 @@ impl MappedMemory for UnixMemoryMap<'_> {
     }
 }
 
-pub fn ivshmem_device<'a>(path: &Path, size: usize) -> Result<IvshmemDevice> {
+pub fn ivshmem_device<'a>(path: &Path) -> Result<IvshmemDevice> {
     let path = CString::new(path.to_str().expect("Unable to convert path to CString"))?;
-    let memory_map = UnixMemoryMap::new(path, size)?;
+    let memory_map = UnixMemoryMap::new(path)?;
     Ok(IvshmemDevice::with_memory(memory_map))
 }

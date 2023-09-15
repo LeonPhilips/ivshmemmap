@@ -20,7 +20,7 @@ fn main() {
     use std::path::PathBuf;
     use std::str::FromStr;
 
-    let mut x = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap(), 100).unwrap();
+    let mut x = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap()).unwrap();
 
     let fmtted = format!("{:?}", x);
 
