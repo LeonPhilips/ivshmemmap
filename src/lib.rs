@@ -1,5 +1,5 @@
-#[cfg(windows)]
-pub mod windows;
+pub mod device;
 #[cfg(unix)]
 pub mod linux;
-pub mod device;
+#[cfg(windows)]
+pub mod windows;

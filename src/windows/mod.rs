@@ -1,11 +1,13 @@
+use crate::device::{IvshmemDevice, MappedMemory};
+use crate::windows::winerror::WindowsError;
 use anyhow::{bail, Context, Result};
 use std::fmt::Debug;
 use windows::core::{GUID, PCWSTR};
 use windows::imp::GetLastError;
 use windows::Win32::Devices::DeviceAndDriverInstallation::{
-    DIGCF_DEVICEINTERFACE, DIGCF_PRESENT, HDEVINFO,
-    SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiEnumDeviceInterfaces, SetupDiGetClassDevsW,
-    SetupDiGetDeviceInterfaceDetailW, SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W, SP_DEVINFO_DATA,
+    SetupDiDestroyDeviceInfoList, SetupDiEnumDeviceInfo, SetupDiEnumDeviceInterfaces,
+    SetupDiGetClassDevsW, SetupDiGetDeviceInterfaceDetailW, DIGCF_DEVICEINTERFACE, DIGCF_PRESENT,
+    HDEVINFO, SP_DEVICE_INTERFACE_DATA, SP_DEVICE_INTERFACE_DETAIL_DATA_W, SP_DEVINFO_DATA,
 };
 use windows::Win32::Foundation::{
     ERROR_DEVICE_ALREADY_ATTACHED, GENERIC_READ, GENERIC_WRITE, HANDLE, HWND, INVALID_HANDLE_VALUE,
@@ -14,8 +16,6 @@ use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_FLAGS_AND_ATTRIBUTES, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
 use windows::Win32::System::IO::DeviceIoControl;
-use crate::device::{IvshmemDevice, MappedMemory};
-use crate::windows::winerror::WindowsError;
 
 mod winerror;
 
@@ -46,18 +46,26 @@ impl IvshmemMemoryMapResponse {
         }
     }
 
-    pub fn upgrade(self, ivshmem_size: u64) -> Result<MappedMemory> {
+    pub fn upgrade(self, ivshmem_size: u64) -> Result<WindowsMemoryMap> {
         if self.size != ivshmem_size {
-            panic!("Tried to allocate invalid memory. Assumed {:?}b but found {:?}b", ivshmem_size, self.size)
+            panic!(
+                "Tried to allocate invalid memory. Assumed {:?}b but found {:?}b",
+                ivshmem_size, self.size
+            )
         }
         let ptr = unsafe {
             std::slice::from_raw_parts_mut::<'static>(
                 self.memory_address as *mut u8,
-                self.size as usize
+                self.size as usize,
             )
         };
 
-        Ok(MappedMemory::from_parts(self.peer_id, self.size, self.vectors, ptr))
+        Ok(WindowsMemoryMap::from_parts(
+            self.peer_id,
+            self.size,
+            self.vectors,
+            ptr,
+        ))
     }
 }
 
@@ -90,7 +98,7 @@ impl IvshmemDescriptor {
                 0,
                 &mut device_interface_data,
             )
-                .as_bool()
+            .as_bool()
             {
                 bail!("Failed to enumerate device: {:?}", device_info_set);
             };
@@ -121,7 +129,7 @@ impl IvshmemDescriptor {
                 Some(&mut buffer_size),
                 Some(&mut device_info_data),
             )
-                .as_bool()
+            .as_bool()
             {
                 bail!("Failed to parse device interface: {:?}", GetLastError());
             }
@@ -152,12 +160,12 @@ impl IvshmemDescriptor {
             FILE_FLAGS_AND_ATTRIBUTES(0),
             HANDLE(0),
         )
-            .with_context(|| {
-                format!(
-                    "Unable to open IVSHMEM file path: {:?}",
-                    self.pcwstr().to_string(),
-                )
-            })?;
+        .with_context(|| {
+            format!(
+                "Unable to open IVSHMEM file path: {:?}",
+                self.pcwstr().to_string(),
+            )
+        })?;
 
         WindowsError::current().check()?;
 
@@ -180,7 +188,7 @@ impl IvshmemDescriptor {
             Some(&mut bytes_returned),
             None,
         )
-            .as_bool()
+        .as_bool()
         {
             bail!(
                 "Failed to request IVSHMEM device size. Error code: {}",
@@ -210,7 +218,7 @@ impl IvshmemDescriptor {
             None,
             None,
         )
-            .as_bool()
+        .as_bool()
         {
             let error_code = GetLastError();
             if error_code == ERROR_DEVICE_ALREADY_ATTACHED.0 {
@@ -223,7 +231,9 @@ impl IvshmemDescriptor {
             }
         }
 
-        Ok(IvshmemDevice::with_memory(memory_map.upgrade(ivshmem_size)?))
+        Ok(IvshmemDevice::with_memory(
+            memory_map.upgrade(ivshmem_size)?,
+        ))
     }
 
     // PCWSTR is actually a pointer to a buffer. Storing this value is NOT recommended
@@ -231,11 +241,11 @@ impl IvshmemDescriptor {
         PCWSTR::from_raw(self.path_bytes.as_ptr())
     }
 
-    pub fn info(&self) -> &HDEVINFO{
+    pub fn info(&self) -> &HDEVINFO {
         &self.info
     }
 
-    pub fn data(&self) -> &SP_DEVINFO_DATA{
+    pub fn data(&self) -> &SP_DEVINFO_DATA {
         &self.data
     }
 }
@@ -244,18 +254,22 @@ impl IvshmemDescriptor {
 ///
 /// # Arguments
 ///
-/// * `picker`: A function that removes the selected vec from the
+/// * `picker`: A function that removes the selected device from the vec and returns it. All remaining elements in the vec will be unloaded.
+///             The provided vec is guaranteed to contain at least one Ivshmem device. If no such device exists, this function will return an error.
 ///
-/// returns: Result<IvshmemDevice, Error>
+/// returns: An initialized and usable IvshmemDevice
 ///
 /// # Examples
 ///
 /// ```
-///
+/// let mut device = ivshmemmap::windows::pick_ivshmem_device(|mut dev| {
+///     // Do your comparison logic here. In this instance, we simply return the second Ivshmem device found on this computer.
+///     dev.remove(1)
+/// }).unwrap();
 /// ```
-pub fn fetch_ivshmem_devices<F>(picker: F) -> Result<IvshmemDevice>
-    where
-        F: FnOnce(Vec<IvshmemDescriptor>) -> IvshmemDescriptor,
+pub fn pick_ivshmem_device<F>(picker: F) -> Result<IvshmemDevice>
+where
+    F: FnOnce(Vec<IvshmemDescriptor>) -> IvshmemDescriptor,
 {
     unsafe {
         let device_info = SetupDiGetClassDevsW(
@@ -264,7 +278,7 @@ pub fn fetch_ivshmem_devices<F>(picker: F) -> Result<IvshmemDevice>
             HWND::default(),
             DIGCF_PRESENT | DIGCF_DEVICEINTERFACE,
         )
-            .with_context(|| "Failed to fetch device info")?;
+        .with_context(|| "Failed to fetch device info")?;
 
         WindowsError::current().check()?;
 
@@ -300,5 +314,41 @@ pub fn fetch_ivshmem_devices<F>(picker: F) -> Result<IvshmemDevice>
             panic!("Failed to free memory for IVSHMEM devices.");
         }
         Ok(ivshmem_device)
+    }
+}
+
+pub struct WindowsMemoryMap {
+    peer_id: u64,
+    size: u64,
+    vectors: u64,
+    ptr: &'static mut [u8],
+}
+
+impl Debug for WindowsMemoryMap {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Memory{{peer: {:?} size: {:?} vectors: {:?}}}",
+            self.peer_id, self.size, self.vectors
+        )?;
+        Ok(())
+    }
+}
+
+impl WindowsMemoryMap {
+    pub fn from_parts(peer_id: u64, size: u64, vectors: u64, ptr: &'static mut [u8]) -> Self {
+        Self {
+            peer_id,
+            size,
+            vectors,
+            ptr,
+        }
+    }
+}
+
+impl MappedMemory for WindowsMemoryMap {
+    #[inline(always)]
+    fn ptr(&mut self) -> &mut [u8] {
+        &mut self.ptr
     }
 }
