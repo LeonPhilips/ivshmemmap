@@ -7,11 +7,11 @@ use std::ffi::CString;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
 
-pub(crate) struct UnixMemoryMap<'a> {
-    memory: &'a mut [u8],
+pub(crate) struct UnixMemoryMap {
+    memory: &'static mut [u8],
 }
 
-impl UnixMemoryMap<'_> {
+impl UnixMemoryMap {
     pub fn new(path: &Path) -> Result<Self> {
         let path = CString::new(path.to_str().expect("Unable to convert path to CString"))?;
         unsafe {
@@ -38,7 +38,7 @@ impl UnixMemoryMap<'_> {
     }
 }
 
-impl Debug for UnixMemoryMap<'_> {
+impl Debug for UnixMemoryMap {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Memory{{ size: {:?} }}", self.memory.len())?;
         Ok(())
