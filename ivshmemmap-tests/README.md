@@ -1,0 +1,1 @@
+Ivshmemmap-tests is designed for testing the functionality of the library in the root directory. [ivshmemmap-tests](https://github.com/TerminatorNL/ivshmemmap/tree/master/ivshmemmap-tests) is not part of the [ivshmemmap](https://github.com/TerminatorNL/ivshmemmap/) library itself.
