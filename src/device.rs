@@ -73,9 +73,9 @@ impl DerefMut for IvshmemDevice {
     }
 }
 
-impl Into<&'static [u8]> for IvshmemDevice {
+impl From<IvshmemDevice> for &'static [u8] {
     /// Use this if you need direct access to the shared memory pointer.
-    fn into(self) -> &'static [u8] {
-        self.memory
+    fn from(value: IvshmemDevice) -> Self {
+        value.memory
     }
 }
