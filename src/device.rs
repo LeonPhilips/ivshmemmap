@@ -3,14 +3,12 @@ use std::ops::{Deref, DerefMut};
 
 #[derive(Debug)]
 pub struct IvshmemDevice {
-    memory: &'static mut [u8]
+    memory: &'static mut [u8],
 }
 
 impl IvshmemDevice {
     pub(crate) fn with_memory(map: &'static mut [u8]) -> Self {
-        Self {
-            memory: map
-        }
+        Self { memory: map }
     }
 
     /// Sets all bytes in the memory buffer to `byte`.
@@ -50,7 +48,11 @@ impl IvshmemDevice {
                 self.memory.len(),
                 "Size of bytes should be equal to the whole memory buffer size."
             );
-            std::ptr::copy_nonoverlapping(buf.as_ptr(), self.memory.as_mut_ptr(), self.memory.len());
+            std::ptr::copy_nonoverlapping(
+                buf.as_ptr(),
+                self.memory.as_mut_ptr(),
+                self.memory.len(),
+            );
         }
     }
 }
