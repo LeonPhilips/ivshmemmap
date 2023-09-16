@@ -65,10 +65,17 @@ impl Deref for IvshmemDevice {
     }
 }
 
-/// Notice:
-/// If for some reason the underlying pointer is replaced with another, the shared memory will no longer work.
 impl DerefMut for IvshmemDevice {
+    /// Notice:
+    /// If for some reason the underlying pointer is replaced with another, the shared memory will no longer work.
     fn deref_mut(&mut self) -> &mut Self::Target {
+        self.memory
+    }
+}
+
+impl Into<&'static [u8]> for IvshmemDevice {
+    /// Use this if you need direct access to the shared memory pointer.
+    fn into(self) -> &'static [u8] {
         self.memory
     }
 }
