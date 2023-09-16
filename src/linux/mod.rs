@@ -1,13 +1,13 @@
 extern crate libc;
 
-use crate::device::{IvshmemDevice, MappedMemory};
+use crate::device::IvshmemDevice;
 use anyhow::bail;
+use anyhow::Result;
+use libc::FILE;
 use std::ffi::CString;
 use std::fmt::{Debug, Formatter};
 use std::fs::{File, OpenOptions};
 use std::path::Path;
-use anyhow::Result;
-use libc::FILE;
 
 pub(crate) struct UnixMemoryMap<'a> {
     memory: &'a mut [u8],
@@ -42,23 +42,12 @@ impl UnixMemoryMap<'_> {
 
 impl Debug for UnixMemoryMap<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Memory{{ size: {:?} }}",
-            self.memory.len()
-        )?;
+        write!(f, "Memory{{ size: {:?} }}", self.memory.len())?;
         Ok(())
-    }
-}
-
-impl MappedMemory for UnixMemoryMap<'_> {
-    #[inline(always)]
-    fn ptr(&mut self) -> &mut [u8] {
-        &mut self.memory
     }
 }
 
 pub fn ivshmem_device<'a>(path: &Path) -> Result<IvshmemDevice> {
     let memory_map = UnixMemoryMap::new(path)?;
-    Ok(IvshmemDevice::with_memory(memory_map))
+    Ok(IvshmemDevice::with_memory(memory_map.memory))
 }

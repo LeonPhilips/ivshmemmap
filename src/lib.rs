@@ -1,5 +1,5 @@
-use device::IvshmemDevice;
 use anyhow::Result;
+use device::IvshmemDevice;
 
 pub mod device;
 #[cfg(unix)]

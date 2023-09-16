@@ -1,6 +1,6 @@
 extern crate ivshmemmap;
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[cfg(windows)]
 fn main() {
@@ -9,13 +9,17 @@ fn main() {
         dev.remove(1)
     }).unwrap();
 
-    println!("Size: {:?}", device.direct().len());
+    println!("Size: {:?}", device.len());
     println!("Testing manipulation...");
     loop {
-        let existing_byte = device.direct()[1];
+        let existing_byte = device[1];
         let next_byte = existing_byte.wrapping_add(1);
-        device.set_all_bytes(next_byte).unwrap();
-        println!("Changed value: {:?} -> {:?}", existing_byte, next_byte);
+
+        let bytes = vec![next_byte; device.len()];
+        let start = Instant::now();
+        device.write_all(&bytes).unwrap();
+        let duration = start.elapsed();
+        println!("Changed value: {:?} -> {:?} ({:?} ns)", existing_byte, next_byte, duration.as_nanos());
         std::thread::sleep(Duration::from_millis(100));
     }
 }
@@ -26,13 +30,17 @@ fn main() {
     use std::str::FromStr;
 
     let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap()).unwrap();
-    println!("Size: {:?}", device.direct().len());
+    println!("Size: {:?}", device.len());
     println!("Testing manipulation...");
     loop {
-        let existing_byte = device.direct()[1];
+        let existing_byte = device[1];
         let next_byte = existing_byte.wrapping_add(1);
-        device.set_all_bytes(next_byte).unwrap();
-        println!("Changed value: {:?} -> {:?}", existing_byte, next_byte);
+
+        let bytes = vec![next_byte; device.len()];
+        let start = Instant::now();
+        device.write_all(&bytes).unwrap();
+        let duration = start.elapsed();
+        println!("Changed value: {:?} -> {:?} ({:?} ns)", existing_byte, next_byte, duration.as_nanos());
         std::thread::sleep(Duration::from_millis(100));
     }
 }

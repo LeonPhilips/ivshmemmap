@@ -1,33 +1,48 @@
 use std::fmt::Debug;
-
-#[cfg(windows)]
-type MemoryType = crate::windows::WindowsMemoryMap;
-#[cfg(unix)]
-type MemoryType = crate::linux::UnixMemoryMap<'static>;
-
-// We have a soft requirement on all memory maps implementing the MappedMemory trait to ensure all desired features are implemented for all supported platforms.
-pub(crate) trait MappedMemory: Debug {
-    fn ptr(&mut self) -> &mut [u8];
-}
+use std::ops::Deref;
 
 #[derive(Debug)]
 pub struct IvshmemDevice {
-    memory: MemoryType,
+    memory: &'static mut [u8],
+    size: usize,
 }
 
 impl IvshmemDevice {
-    pub(crate) fn with_memory(map: MemoryType) -> Self {
-        Self { memory: map }
+    pub(crate) fn with_memory(map: &'static mut [u8]) -> Self {
+        let len = map.len();
+        Self {
+            memory: map,
+            size: len,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.size
     }
 
     pub fn set_all_bytes(&mut self, byte: u8) -> std::io::Result<()> {
-        let v = vec![byte; self.memory.ptr().len()];
-        self.memory.ptr().copy_from_slice(&v);
+        let v = vec![byte; self.size];
+        self.memory.copy_from_slice(&v);
         Ok(())
     }
 
-    #[inline]
-    pub fn direct(&mut self) -> &mut [u8] {
-        self.memory.ptr()
+    pub fn write_all(&mut self, bytes: &[u8]) -> std::io::Result<()> {
+        unsafe {
+            assert_eq!(
+                bytes.len(),
+                self.size,
+                "Size of bytes should be equal to the whole memory buffer size."
+            );
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), self.memory.as_mut_ptr(), self.size);
+        }
+        Ok(())
+    }
+}
+
+impl Deref for IvshmemDevice {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.memory
     }
 }

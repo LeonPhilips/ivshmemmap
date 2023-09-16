@@ -1,7 +1,8 @@
-use crate::device::{IvshmemDevice, MappedMemory};
+use crate::device::IvshmemDevice;
 use crate::windows::winerror::WindowsError;
 use anyhow::{bail, Context, Result};
 use std::fmt::Debug;
+use std::fmt::Formatter;
 use windows::core::{GUID, PCWSTR};
 use windows::imp::GetLastError;
 use windows::Win32::Devices::DeviceAndDriverInstallation::{
@@ -16,7 +17,6 @@ use windows::Win32::Storage::FileSystem::{
     CreateFileW, FILE_FLAGS_AND_ATTRIBUTES, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
 };
 use windows::Win32::System::IO::DeviceIoControl;
-use std::fmt::Formatter;
 
 mod winerror;
 
@@ -205,14 +205,14 @@ impl IvshmemDescriptor {
         }
 
         const REQUEST_MMAP_CODE: u32 = ((0x00000022) << 16) | ((0x802) << 2);
-        const SET_NON_CACHED: u8 = 0;
+        const IVSHMEM_CACHE_WRITECOMBINED: u8 = 2;
 
         let mut memory_map = IvshmemMemoryMapResponse::new();
 
         if !DeviceIoControl(
             handle,
             REQUEST_MMAP_CODE,
-            Some(&SET_NON_CACHED as *const _ as *const _),
+            Some(&IVSHMEM_CACHE_WRITECOMBINED as *const _ as *const _),
             1,
             Some(&mut memory_map as *mut _ as *mut _),
             std::mem::size_of::<IvshmemMemoryMapResponse>() as u32, // IVSHMEM_MMAP size should be equal to 32.
@@ -233,7 +233,7 @@ impl IvshmemDescriptor {
         }
 
         Ok(IvshmemDevice::with_memory(
-            memory_map.upgrade(ivshmem_size)?,
+            memory_map.upgrade(ivshmem_size)?.ptr,
         ))
     }
 
@@ -327,12 +327,5 @@ impl WindowsMemoryMap {
             vectors,
             ptr,
         }
-    }
-}
-
-impl MappedMemory for WindowsMemoryMap {
-    #[inline(always)]
-    fn ptr(&mut self) -> &mut [u8] {
-        &mut self.ptr
     }
 }
