@@ -19,7 +19,7 @@ mod windows;
 /// # Examples
 ///
 /// ```
-/// let mut device = pick_ivshmem_device(|mut dev| {
+/// let mut device = pick_windows_ivshmem_device(|mut dev| {
 ///     // Do your comparison logic here. In this instance, we simply return the second Ivshmem device found on this computer.
 ///     dev.remove(1)
 /// }).unwrap();
