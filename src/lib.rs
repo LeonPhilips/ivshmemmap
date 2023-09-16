@@ -36,15 +36,14 @@ where
 ///
 /// # Arguments
 ///
-/// * `path`:
-/// * `size`:
+/// * `path`: Path to the shared memory file. Usually found in /dev/shm/*
 ///
-/// returns: Result<IvshmemDevice<<unknown>>, <unknown>>
+/// returns: An initialized and usable IvshmemDevice
 ///
 /// # Examples
 ///
 /// ```
-///
+/// let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap()).unwrap();
 /// ```
 #[cfg(unix)]
 pub fn linux_ivshmem_device(path: &std::path::Path) -> Result<IvshmemDevice> {
