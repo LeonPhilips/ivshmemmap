@@ -17,7 +17,7 @@ fn main() {
 
         let bytes = vec![next_byte; device.len()];
         let start = Instant::now();
-        device.write_all(&bytes).unwrap();
+        device.write_to_all(&bytes);
         let duration = start.elapsed();
         println!("Changed value: {:?} -> {:?} ({:?} ns)", existing_byte, next_byte, duration.as_nanos());
         std::thread::sleep(Duration::from_millis(100));
@@ -38,7 +38,7 @@ fn main() {
 
         let bytes = vec![next_byte; device.len()];
         let start = Instant::now();
-        device.write_all(&bytes).unwrap();
+        device.write_to_all(&bytes);
         let duration = start.elapsed();
         println!("Changed value: {:?} -> {:?} ({:?} ns)", existing_byte, next_byte, duration.as_nanos());
         std::thread::sleep(Duration::from_millis(100));

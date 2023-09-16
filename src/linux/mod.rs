@@ -3,10 +3,8 @@ extern crate libc;
 use crate::device::IvshmemDevice;
 use anyhow::bail;
 use anyhow::Result;
-use libc::FILE;
 use std::ffi::CString;
 use std::fmt::{Debug, Formatter};
-use std::fs::{File, OpenOptions};
 use std::path::Path;
 
 pub(crate) struct UnixMemoryMap<'a> {
