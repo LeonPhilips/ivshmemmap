@@ -38,7 +38,7 @@ impl IvshmemDevice {
     ///
     /// ```
     ///    let bytes = vec![next_byte; device.len()];
-    ///    device.write_all(&bytes);
+    ///    device.write_to_all(&bytes);
     /// ```
     pub fn write_to_all(&mut self, buf: &[u8]) {
         unsafe {
