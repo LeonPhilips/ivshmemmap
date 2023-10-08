@@ -1,7 +1,7 @@
 # ivshmemmap
 Library for usage with inter-vm shared memory.
 
-This library provides a safe wrapper for using the shared memory as if it's a `&'static [u8]` object.
+This library provides a wrapper for using the shared memory as if it's a `&'static [u8]` object.
 
 See also: [virtio-win/kvm-guest-drivers-windows/ivshmem/](https://github.com/virtio-win/kvm-guest-drivers-windows/tree/master/ivshmem)
 
