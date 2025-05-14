@@ -1,9 +1,14 @@
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
-#[derive(Debug)]
 pub struct IvshmemDevice {
     memory: &'static mut [u8],
+}
+
+impl Debug for IvshmemDevice {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Memory size: {}", self.memory.len())
+    }
 }
 
 impl IvshmemDevice {
@@ -75,6 +80,13 @@ impl DerefMut for IvshmemDevice {
 
 impl From<IvshmemDevice> for &'static [u8] {
     /// Use this if you need direct access to the shared memory pointer.
+    fn from(value: IvshmemDevice) -> Self {
+        value.memory
+    }
+}
+
+impl From<IvshmemDevice> for &'static mut [u8] {
+    /// Use this if you need mutable direct access to the shared memory pointer.
     fn from(value: IvshmemDevice) -> Self {
         value.memory
     }

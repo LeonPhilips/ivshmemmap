@@ -1,11 +1,12 @@
 extern crate libc;
 
 use crate::device::IvshmemDevice;
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::Error;
 use std::ffi::CString;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
+use crate::error::UnixError;
 
 pub(crate) struct UnixMemoryMap {
     memory: &'static mut [u8],
@@ -17,7 +18,7 @@ impl UnixMemoryMap {
         unsafe {
             let file_descriptor = libc::open(path.as_ptr(), libc::O_RDWR, 0o000);
             if file_descriptor == -1 {
-                bail!("Failed to open shared memory.");
+                return Err(Error::from(UnixError::OpenFailed));
             }
             let size = libc::lseek(file_descriptor, 0, libc::SEEK_END) as usize;
             libc::lseek(file_descriptor, 0, libc::SEEK_SET);
@@ -30,7 +31,7 @@ impl UnixMemoryMap {
                 0,
             );
             if ptr == libc::MAP_FAILED {
-                bail!("Failed to map shared memory");
+                return Err(Error::from(UnixError::MapFailed));
             }
             let slice: &mut [u8] = std::slice::from_raw_parts_mut(ptr as *mut u8, size);
             Ok(Self { memory: slice })

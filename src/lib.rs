@@ -2,6 +2,7 @@ use anyhow::Result;
 use device::IvshmemDevice;
 
 pub mod device;
+pub mod error;
 #[cfg(unix)]
 mod linux;
 #[cfg(windows)]
