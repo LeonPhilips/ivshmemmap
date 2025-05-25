@@ -2,7 +2,6 @@ extern crate libc;
 
 use crate::device::IvshmemDevice;
 use anyhow::Result;
-use anyhow::Error;
 use std::ffi::CString;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
@@ -13,12 +12,12 @@ pub(crate) struct UnixMemoryMap {
 }
 
 impl UnixMemoryMap {
-    pub fn new(path: &Path) -> Result<Self> {
-        let path = CString::new(path.to_str().expect("Unable to convert path to CString"))?;
+    pub fn new(path: &Path) -> Result<Self, UnixError> {
+        let path = CString::new(path.to_str().expect("Unable to convert path to CString")).expect("Invalid path given");
         unsafe {
             let file_descriptor = libc::open(path.as_ptr(), libc::O_RDWR, 0o000);
             if file_descriptor == -1 {
-                return Err(Error::from(UnixError::OpenFailed));
+                return Err(UnixError::OpenFailed);
             }
             let size = libc::lseek(file_descriptor, 0, libc::SEEK_END) as usize;
             libc::lseek(file_descriptor, 0, libc::SEEK_SET);
@@ -31,7 +30,7 @@ impl UnixMemoryMap {
                 0,
             );
             if ptr == libc::MAP_FAILED {
-                return Err(Error::from(UnixError::MapFailed));
+                return Err(UnixError::MapFailed);
             }
             let slice: &mut [u8] = std::slice::from_raw_parts_mut(ptr as *mut u8, size);
             Ok(Self { memory: slice })
@@ -46,7 +45,7 @@ impl Debug for UnixMemoryMap {
     }
 }
 
-pub fn ivshmem_device<'a>(path: &Path) -> Result<IvshmemDevice> {
+pub fn ivshmem_device<'a>(path: &Path, worker_threads: usize) -> Result<IvshmemDevice, UnixError> {
     let memory_map = UnixMemoryMap::new(path)?;
-    Ok(IvshmemDevice::with_memory(memory_map.memory))
+    Ok(IvshmemDevice::with_memory(memory_map.memory, worker_threads))
 }

@@ -1,5 +1,6 @@
 use anyhow::Result;
 use device::IvshmemDevice;
+use crate::error::UnixError;
 
 pub mod device;
 pub mod error;
@@ -26,11 +27,11 @@ mod windows;
 /// }).unwrap();
 /// ```
 #[cfg(windows)]
-pub fn pick_windows_ivshmem_device<F>(picker: F) -> Result<IvshmemDevice>
+pub fn pick_windows_ivshmem_device<F>(picker: F, worker_threads: usize) -> Result<IvshmemDevice>
 where
     F: FnOnce(Vec<windows::IvshmemDescriptor>) -> windows::IvshmemDescriptor,
 {
-    windows::pick_ivshmem_device(picker)
+    windows::pick_ivshmem_device(picker, worker_threads)
 }
 
 ///
@@ -38,15 +39,19 @@ where
 /// # Arguments
 ///
 /// * `path`: Path to the shared memory file. Usually found in /dev/shm/*
+/// * `worker_threads`: Amount of worker threads for copy operations.
 ///
 /// returns: An initialized and usable IvshmemDevice
 ///
 /// # Examples
 ///
 /// ```
-/// let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap()).unwrap();
+/// use std::path::PathBuf;
+/// use std::str::FromStr;
+///
+/// let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap(), 4).unwrap();
 /// ```
 #[cfg(unix)]
-pub fn linux_ivshmem_device(path: &std::path::Path) -> Result<IvshmemDevice> {
-    linux::ivshmem_device(path)
+pub fn linux_ivshmem_device(path: &std::path::Path, worker_threads: usize) -> Result<IvshmemDevice, UnixError> {
+    linux::ivshmem_device(path, worker_threads)
 }

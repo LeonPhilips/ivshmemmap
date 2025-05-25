@@ -29,7 +29,7 @@ fn main() {
     use std::path::PathBuf;
     use std::str::FromStr;
 
-    let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap()).unwrap();
+    let mut device = ivshmemmap::linux_ivshmem_device(&PathBuf::from_str("/dev/shm/shm-portal").unwrap(), 4).unwrap();
     println!("Size: {:?}", device.len());
     println!("Testing manipulation...");
     loop {
@@ -40,7 +40,7 @@ fn main() {
         let start = Instant::now();
         device.write_to_all(&bytes);
         let duration = start.elapsed();
-        println!("Changed value: {:?} -> {:?} ({:?} ns)", existing_byte, next_byte, duration.as_nanos());
+        println!("Changed value: {:?} -> {:?} ({:.2} GiB/s, {:.2} GB/s)", existing_byte, next_byte, bytes.len() as f64 / duration.as_secs_f64() / 1073741824f64, bytes.len() as f64 / duration.as_secs_f64() / 1000000000f64);
         std::thread::sleep(Duration::from_millis(100));
     }
 }

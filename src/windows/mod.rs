@@ -149,7 +149,7 @@ impl IvshmemDescriptor {
         }
     }
 
-    unsafe fn open(self) -> Result<IvshmemDevice> {
+    unsafe fn open(self, worker_threads: usize) -> Result<IvshmemDevice> {
         // This will fail if an existing handle isn't dropped.
         // It takes a while for the device to be freed up after the program is terminated.
         let handle = CreateFileW(
@@ -234,6 +234,7 @@ impl IvshmemDescriptor {
 
         Ok(IvshmemDevice::with_memory(
             memory_map.upgrade(ivshmem_size)?.ptr,
+            worker_threads
         ))
     }
 
@@ -251,7 +252,7 @@ impl IvshmemDescriptor {
     }
 }
 
-pub fn pick_ivshmem_device<F>(picker: F) -> Result<IvshmemDevice>
+pub fn pick_ivshmem_device<F>(picker: F, worker_threads: usize) -> Result<IvshmemDevice>
 where
     F: FnOnce(Vec<IvshmemDescriptor>) -> IvshmemDescriptor,
 {
@@ -291,7 +292,7 @@ where
         }
 
         let ivshmem_device = picker(choices)
-            .open()
+            .open(worker_threads)
             .with_context(|| "Unable to open IVSHMEM device")?;
 
         if !SetupDiDestroyDeviceInfoList(device_info).as_bool() {
